@@ -7,11 +7,10 @@ from datetime import datetime, timedelta, timezone
 
 
 # Define the program description
-text = 'This program with generated EC2 instance report with all tags'
+text = 'This program will generated EC2 instance report with all tags; you must pass aws profile(s); will run in us-east-1 region by default'
 
 # Defaults, can be modified
 AWS_REGIONS = ['us-east-1']
-AWS_PROFILES = ['training']
 
 now=datetime.now(timezone.utc)
 timestr = time.strftime("%Y%m%d-%H%M%S")
@@ -89,8 +88,8 @@ if __name__ == '__main__':
 
     # Initiate the parser
     parser = argparse.ArgumentParser(description = text)
-    parser.add_argument("--profile", "-p", nargs = '+', default = AWS_PROFILES, help = "set AWS Profile")
-    parser.add_argument("--region", "-r", nargs = '+', default = AWS_REGIONS, help = "set AWS region")
+    parser.add_argument("--profile", "-p", nargs = '+', help = "set AWS Profile, this is required")
+    parser.add_argument("--region", "-r", nargs = '+', default = AWS_REGIONS, help = "set AWS region, will default to us-east-1")
 
     # Read arguments from the command line
     args = parser.parse_args()
