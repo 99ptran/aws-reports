@@ -1,16 +1,13 @@
 # Include standard modules
 import argparse
 import boto3
-import re
 import csv
-import sys, getopt
-from botocore.exceptions import ClientError
 import time
 from datetime import datetime, timedelta, timezone
-from operator import itemgetter
+
 
 # Define the program description
-text = 'This is a test program. ..... '
+text = 'This program with generated EC2 instance report with all tags'
 
 # Defaults, can be modified
 AWS_REGIONS = ['us-east-1']
@@ -64,7 +61,7 @@ def get_ec2():
                 for tag in Instance.get('Tags',[]):
                     row[tag.get('Key')] = tag.get('Value')
                     
-                # add instance info to dict
+                # add instance info to dict; can append other instance info as needed, make sure to add colume header.
                 row['AccountName'] = accountAlias
                 row['Region'] = region 
                 row['InstanceId'] = Instance['InstanceId']
