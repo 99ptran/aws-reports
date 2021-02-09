@@ -19,74 +19,6 @@ AWS_PROFILES = ['training']
 now=datetime.now(timezone.utc)
 timestr = time.strftime("%Y%m%d-%H%M%S")
 
-def get_snapshots():
-    """
-        List all EC2 snapshots owned by account in region.
-        It is faster than querying aws each time.
-        :return: json dictionary list
-    """
-    #client = boto_ec2_client(region)
-    paginator = ec2.get_paginator('describe_snapshots')
-    response_iterator = paginator.paginate(OwnerIds=[accountId])
-    snapshots = list()
-    for page in response_iterator:
-        for obj in page['Snapshots']:
-            snapshots.append(obj)
-                   
-    return(snapshots)
-
-def latest_snapshot(snapshots):
-    """
-        Return latest snapshot from a list of snapshots.
-        
-    """
-    # new list for sorting
-    snaps = list() 
-    
-    # update list with data and snapshotId
-    for snapshot in snapshots:
-        snaps.append({'date':snapshot['StartTime'], 'snap_id': snapshot['SnapshotId']})
-        
-    # sort new list by date
-    sorted_snapshots = sorted(snaps, key=lambda k: k['date'], reverse= True)
-    
-    # get latest snapshot id
-    latest_snap_id = sorted_snapshots[0]['snap_id']
-    
-    # get latest snapshot date
-    latest_snap_date = sorted_snapshots[0]['date']
-    
-    return(latest_snap_date,latest_snap_id)
-
-def get_volumes(InstanceId,VolumeID):
-    """
-        List all volumes from transmitted instance id // Counting Snapshots by Description
-        :return: number of snaps and volume age in days
-    """
-   
-    paginator = ec2.get_paginator('describe_volumes')
-    response_iterator = paginator.paginate(VolumeIds=[VolumeID])
-    for page in response_iterator:
-        for volume in page['Volumes']:
-             # calculating volume age
-             voldate = volume['CreateTime']
-        VolumeAge=now-voldate
-        VolumeSize= volume['Size']
-        # filtering snapshots by VolumeID
-        FilteredSnapshots = [x for x in snapshots if x['VolumeId'] == volume['VolumeId']]
-        
-        # if FilteredSnapshots is empty, volume have no snapshot
-        if len(FilteredSnapshots) == 0:
-            #print('no snapshot')
-            latestSnap = u''
-            latestSnapId = "No Snapshot"
-        else:
-            #print(FilteredSnapshots)
-            latestSnap, latestSnapId = latest_snapshot(FilteredSnapshots)
-            
-        print("latest snapshot %s" %  latestSnapId) 
-        
-        return VolumeAge, len(FilteredSnapshots), VolumeSize, latestSnap, latestSnapId
 
 def get_ec2():
     """
@@ -97,35 +29,64 @@ def get_ec2():
     #client = boto_ec2_client(region)
     paginator = ec2.get_paginator('describe_instances')
     response_iterator = paginator.paginate()
-    row = list()
+    result = list()
+    row = {}
+    
+    # get all tag keys
+    tag_set = []
     for page in response_iterator:
         for obj in page['Reservations']:
             for Instance in obj['Instances']:
+                for tag in Instance.get('Tags', []):
+                    if tag.get('Key'):
+                        tag_set.append(tag.get('Key'))
+    
+    # get all unique tag keys                   
+    tag_set = list(set(tag_set))
+    #print(tag_set)
+    
+    for page in response_iterator:
+        for obj in page['Reservations']:
+            for Instance in obj['Instances']:
+                # set instancename from tag, "" if none exist
                 InstanceName=None
                 if Instance['State']['Name'] != 'terminated':
                     try:
                         for tag in Instance['Tags']:
                             if tag["Key"] == 'Name':InstanceName = tag["Value"]
+                            
                     except:
                         InstanceName = ""
-                 
-                print("running for instance %s" % InstanceName)           
-                for Volume in Instance['BlockDeviceMappings']:
-                    #print(Instance['BlockDeviceMappings'])
-                    VolumeAge, SnapshotsCount, VolumeSize, latestSnapDate, latestSnapId = get_volumes(Instance['InstanceId'],Volume['Ebs']['VolumeId'])
-                    row.append({
-                        'AccountName': accountAlias,
-                        'Region': region,
-                        'InstanceId': Instance['InstanceId'],
-                        'InstanceName': InstanceName,
-                        'VolumeID': Volume['Ebs']['VolumeId'],
-                        'VolumeSize': VolumeSize,
-                        'VolAge': str(VolumeAge).split(".")[0],
-                        'LatestSnapDate': latestSnapDate,
-                        'LatestSnapId': latestSnapId,
-                        'SnapshotCount': SnapshotsCount
-                        })
-    return row
+                        
+                print("running for instance %s" % InstanceName)   
+                
+                # add tag key/value pair to dict
+                for tag in Instance.get('Tags',[]):
+                    row[tag.get('Key')] = tag.get('Value')
+                    
+                # add instance info to dict
+                row['AccountName'] = accountAlias
+                row['Region'] = region 
+                row['InstanceId'] = Instance['InstanceId']
+                row['InstanceName'] = InstanceName
+                row['InstanceType'] = Instance['InstanceType']
+                row['InstancePrivateIP'] = Instance.get('PrivateIpAddress', '')
+                row['InstancePublicIP'] = Instance.get('PublicIpAddress', '')
+                row['InstanceState'] = Instance['State'].get('Name', '')
+                row['InstanceSubnet'] = Instance.get('SubnetId', '')
+                row['InstanceVPC'] = Instance.get('VpcId', '')
+                            
+                #print("#########row")
+                #print(row)
+                
+                # append dict to list
+                result.append(dict(row))
+                
+                #print("#########result")
+                #print(result)
+     
+    # return result and unique tag keys                                 
+    return result, tag_set
 
 if __name__ == '__main__':
 
@@ -145,14 +106,10 @@ if __name__ == '__main__':
     #     print("region list %s" % args.region)
     
     # report headers
-    fieldnames = ['AccountName','Region','InstanceId','InstanceName','VolumeSize','VolumeID','VolAge','LatestSnapDate','LatestSnapId','SnapshotCount']
+    fieldnames = ['AccountName','Region','InstanceId','InstanceName','InstanceType','InstancePrivateIP','InstancePublicIP','InstanceState','InstanceSubnet', 'InstanceVPC']
     
     # initialize report, all resulfs from each profile/region will append to this
     report = list()
-    
-    # append field headers to report
-    # adding headers on csv write below
-    #report.append(fields)  
     
     # looping thru each profile
     for arg in args.profile:
@@ -174,16 +131,25 @@ if __name__ == '__main__':
             
             # set up boto3 client for region
             ec2 = session.client('ec2', region_name = region)
+           
+            # get report, tag keys 
+            results, tags = get_ec2()
             
-            # get list of snapshots for profile
-            snapshots=get_snapshots()
+            # append tags to fieldnames
+            for tag in tags:
+                fieldnames.append(tag)
             
-            # get result and append
-            report.extend(get_ec2())
+            #print("######fieldnames######")
+            #print(fieldnames)
+            
+            report.extend(results)
+        
+        #print("######report######")
+        #print(report)
              
     # write report to csv
     # adding field headers first
-    with open('ebs-report-'+timestr+'.csv', 'w') as csvfile:
+    with open('ec2-report-'+timestr+'.csv', 'w') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         for item in report:
