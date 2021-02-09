@@ -30,10 +30,8 @@ Backup of *.doc*
 .vscode/*
 
 # virtual enviroment
-venv/* 
-bin/* 
-lib/* 
-pyvenv.cfg
+.venv/* 
+
 
 
 # output
