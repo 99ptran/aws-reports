@@ -39,7 +39,6 @@ def get_ec2():
     
     # get all unique tag keys                   
     tag_set = list(set(tag_set))
-    #print(tag_set)
     
     for page in response_iterator:
         for obj in page['Reservations']:
@@ -72,14 +71,8 @@ def get_ec2():
                 row['InstanceSubnet'] = Instance.get('SubnetId', '')
                 row['InstanceVPC'] = Instance.get('VpcId', '')
                             
-                #print("#########row")
-                #print(row)
-                
                 # append dict to list
                 result.append(dict(row))
-                
-                #print("#########result")
-                #print(result)
      
     # return result and unique tag keys                                 
     return result, tag_set
@@ -93,13 +86,6 @@ if __name__ == '__main__':
 
     # Read arguments from the command line
     args = parser.parse_args()
-
-    # Checking 
-    # if args.profile:
-    #     print("profile list %s" % args.profile)
-
-    # if args.region:
-    #     print("region list %s" % args.region)
     
     # report headers
     fieldnames = ['AccountName','Region','InstanceId','InstanceName','InstanceType','InstancePrivateIP','InstancePublicIP','InstanceState','InstanceSubnet', 'InstanceVPC']
@@ -135,13 +121,7 @@ if __name__ == '__main__':
             for tag in tags:
                 fieldnames.append('tag:'+tag)
             
-            #print("######fieldnames######")
-            #print(fieldnames)
-            
             report.extend(results)
-        
-        #print("######report######")
-        #print(report)
              
     # write report to csv
     # adding field headers first
