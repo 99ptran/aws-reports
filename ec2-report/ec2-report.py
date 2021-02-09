@@ -56,9 +56,9 @@ def get_ec2():
                         
                 print("running for instance %s" % InstanceName)   
                 
-                # add tag key/value pair to dict
+                # add tag key/value pair to dict; adding "tag:" to tag keys
                 for tag in Instance.get('Tags',[]):
-                    row[tag.get('Key')] = tag.get('Value')
+                    row['tag:'+tag.get('Key')] = tag.get('Value')
                     
                 # add instance info to dict; can append other instance info as needed, make sure to add colume header.
                 row['AccountName'] = accountAlias
@@ -131,9 +131,9 @@ if __name__ == '__main__':
             # get report, tag keys 
             results, tags = get_ec2()
             
-            # append tags to fieldnames
+            # append tags to fieldnames; adding "tag:" to tag keys
             for tag in tags:
-                fieldnames.append(tag)
+                fieldnames.append('tag:'+tag)
             
             #print("######fieldnames######")
             #print(fieldnames)
