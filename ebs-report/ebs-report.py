@@ -10,11 +10,10 @@ from datetime import datetime, timedelta, timezone
 from operator import itemgetter
 
 # Define the program description
-text = 'This is a test program. ..... '
+text = 'This program will generated EBS volume report; you must pass aws profile(s); will run in us-east-1 region by default'
 
 # Defaults, can be modified
 AWS_REGIONS = ['us-east-1']
-#AWS_PROFILES = ['training']
 
 now=datetime.now(timezone.utc)
 timestr = time.strftime("%Y%m%d-%H%M%S")
@@ -93,12 +92,7 @@ def get_ec2():
         List all EC2 instances.
         :return: list of rows to be added in CVS
     """
-    #tag_set = getTags('volume')
-    # print("tag set")
-    # print(tag_set)
     
-    # Create EC2 client
-    #client = boto_ec2_client(region)
     paginator = ec2.get_paginator('describe_instances')
     response_iterator = paginator.paginate()
 
@@ -137,28 +131,17 @@ if __name__ == '__main__':
 
     # Initiate the parser
     parser = argparse.ArgumentParser(description = text)
-    parser.add_argument("--profile", "-p", nargs = '+', help = "set AWS Profile")
-    parser.add_argument("--region", "-r", nargs = '+', default = AWS_REGIONS, help = "set AWS region")
+    parser.add_argument("--profile", "-p", nargs = '+', help = "set AWS Profile, this is required")
+    parser.add_argument("--region", "-r", nargs = '+', default = AWS_REGIONS, help = "set AWS region, will default to us-east-1")
 
     # Read arguments from the command line
     args = parser.parse_args()
-
-    # Checking 
-    # if args.profile:
-    #     print("profile list %s" % args.profile)
-
-    # if args.region:
-    #     print("region list %s" % args.region)
     
     # report headers
     fieldnames = ['AccountName','Region','InstanceId','InstanceName','VolumeSize','VolumeID','VolAge','LatestSnapDate','LatestSnapId','SnapshotCount']
     
     # initialize report, all resulfs from each profile/region will append to this
     report = list()
-    
-    # append field headers to report
-    # adding headers on csv write below
-    #report.append(fields)  
     
     # looping thru each profile
     for arg in args.profile:
