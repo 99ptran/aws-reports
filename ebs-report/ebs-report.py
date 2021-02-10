@@ -19,30 +19,6 @@ AWS_REGIONS = ['us-east-1']
 now=datetime.now(timezone.utc)
 timestr = time.strftime("%Y%m%d-%H%M%S")
 
-def getTags(resourceType):
-    """
-        get all tags keys for Filters resource-type
-    """
-    
-    # initializing lists
-    tag_set = []
-    
-    Filters =[{
-    'Name': 'resource-type',
-    'Values': [resourceType]
-    }]
-    
-    # get tags for filtered resource
-    response = ec2.describe_tags(Filters=Filters)
-    
-    for tag in response['Tags']:
-        if tag.get('Key'):
-            tag_set.append(tag.get('Key'))
-            
-    tag_set = list(set(tag_set))
-   
-    return tag_set
-
 def get_snapshots():
     """
         List all EC2 snapshots owned by account in region.
